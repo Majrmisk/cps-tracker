@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12.2'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r scrape_requirements.txt
 
       - name: Run scraper
         env:
