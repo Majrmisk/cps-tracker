@@ -39,6 +39,24 @@ def get_history(con, selected_date):
     return df
 
 
+def get_week_history(con, any_date):
+    week_start = any_date - datetime.timedelta(days=any_date.weekday())
+    week_end = week_start + datetime.timedelta(days=6)
+    query = f"""
+        SELECT timestamp, free_entries
+        FROM occupancy_log
+        WHERE timestamp::DATE BETWEEN '{week_start}' AND '{week_end}'
+        ORDER BY timestamp
+    """
+    df = con.sql(query).df()
+
+    if not df.empty:
+        df["timestamp"] = df["timestamp"].dt.tz_localize("UTC")
+        df["timestamp"] = df["timestamp"].dt.tz_convert("Europe/Berlin")
+
+    return df, week_start, week_end
+
+
 def main():
     st.title("CPS Tracker")
 
@@ -72,13 +90,23 @@ def main():
     st.divider()
     st.subheader("History")
 
+    view = st.radio("View", ["Day", "Week"], horizontal=True, label_visibility="collapsed")
+
     selected_date = st.date_input(
         "",
         datetime.date.today(),
         label_visibility="collapsed"
     )
 
-    df = get_history(db, selected_date)
+    if view == "Day":
+        df = get_history(db, selected_date)
+        x_title = "Time"
+        x_format = "%H:%M"
+    else:
+        df, week_start, week_end = get_week_history(db, selected_date)
+        x_title = "Date & Time"
+        x_format = "%a %H:%M"
+        st.caption(f"Week of {week_start.strftime('%d %b')} – {week_end.strftime('%d %b %Y')}")
 
     if not df.empty:
         chart = alt.Chart(df).mark_area(
@@ -86,15 +114,14 @@ def main():
             opacity=0.5,
             line=True
         ).encode(
-            x=alt.X("timestamp", title="Time"),
+            x=alt.X("timestamp", title=x_title),
             y=alt.Y(
                 "free_entries",
                 title="Free Entries",
                 scale=alt.Scale(domain=[0, 150])
             ),
-
             tooltip=[
-                alt.Tooltip("timestamp", title="Time", format="%H:%M"),
+                alt.Tooltip("timestamp", title=x_title, format=x_format),
                 alt.Tooltip("free_entries", title="Free Entries")
             ]
         )
