@@ -2,7 +2,7 @@ import streamlit as st
 import altair as alt
 import datetime
 import duckdb
-import pytz
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="CPS Tracker",
@@ -49,8 +49,8 @@ def main():
 
     latest = get_latest_log(db)
     if latest:
-        utc = latest[0].replace(tzinfo=pytz.utc)
-        cet = utc.astimezone(pytz.timezone("Europe/Berlin"))
+        utc = latest[0].replace(tzinfo=datetime.timezone.utc)
+        cet = utc.astimezone(ZoneInfo("Europe/Berlin"))
 
         st.markdown(
             f"""
